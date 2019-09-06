@@ -2,3 +2,7 @@ brewerydb_api.py
 brewerydb_py_wrapper.py
 wd.py
 data/
+__pycache__
+pairs.py
+spark-warehouse/
+data_to_postgresdb.py

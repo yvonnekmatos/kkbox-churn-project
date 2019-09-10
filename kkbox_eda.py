@@ -43,7 +43,7 @@ total_target.is_churn_final.value_counts()
 #==================================================================================================================================
 # MEMBERS DATA
 
-members = pd.read_csv(data_directory+'members_v3.csv')
+members = pd.read_csv(data_directory+'members_v3.csv', nrows=1000)
 len(members)
 members.head()
 members.msno.nunique()
@@ -60,7 +60,8 @@ mem_target.groupby('registered_via').is_churn_final.mean()
 # City to str for categorical - run WOE
 # Clean up bd (age) to make sense
 # Gender to categorical and nulls to 'unknown' - run WOE
-#
+
+# Membership length
 
 
 #==================================================================================================================================
@@ -71,7 +72,8 @@ mem_target.groupby('registered_via').is_churn_final.mean()
 transactions = pd.read_csv(data_directory+'transactions.csv')
 len(transactions)
 transactions.msno.nunique()
-transactions.head(10)
+transactions = transactions.sort_values(by='msno')
+transactions.tail(10)
 transactions.info()
 
 transactions2 = pd.read_csv(data_directory+'transactions_v2.csv')
@@ -79,11 +81,24 @@ len(transactions2)
 transactions2.msno.nunique()
 
 all_transactions = transactions.append(transactions2)
+# all_transactions.to_csv(data_directory+'all_transactions.csv', index=False)
+all_transactions.head()
 # No nulls in all_transactions
 all_transactions.info()
 all_transactions.describe()
 
 all_transactions['outstanding_bal'] = all_transactions.plan_list_price - all_transactions.actual_amount_paid
+
+total_target = pd.read_csv(data_directory+'final_churn_target.csv')
+all_trans_target = pd.merge(total_target[['msno', 'is_churn_final']], all_transactions, on='msno', how='left')
+len(all_trans_target.groupby('msno').size())
+
+all_trans_target['transaction_date'] = pd.to_datetime(all_trans_target.transaction_date.astype(str), format='%Y%m%d')
+all_trans_target['membership_expire_date'] = pd.to_datetime(all_trans_target.membership_expire_date.astype(str), format='%Y%m%d')
+all_trans_target.head()
+all_trans_target.to_csv(data_directory+'all_transactions_in_w_target_dt.csv', index=False)
+
+
 # Check to see if there are no rows in transactions2 that are an update of rows in transactions
 trans_per_date = transactions.groupby(['msno', 'transaction_date', 'membership_expire_date']).size()
 trans_per_date2 = transactions2.groupby(['msno', 'transaction_date', 'membership_expire_date']).size()
@@ -121,7 +136,29 @@ pmt_ids_per_user
 # More complex features
 # Number of times (transactions per date > 1) - group by plan_list_price
 # Number of plans at once?
+#==================================================================================================================================
+all_trans_target = pd.read_csv(data_directory+'all_transactions_in_w_target.csv')
+all_trans_target['transaction_date'] = pd.to_datetime(all_trans_target.transaction_date.astype(str), format='%Y%m%d')
+all_trans_target['membership_expire_date'] = pd.to_datetime(all_trans_target.membership_expire_date.astype(str), format='%Y%m%d')
+all_trans_target.transaction_date[0]
+all_trans_target.head()
+mem_target = pd.read_csv(data_directory+'clean_members_w_target.csv', parse_dates=['registration_init_time'])
+mem_target = mem_target[mem_target.reg_year >= 2015]
+mem_target.info()
 
+all_trans_target.info()
+mem_target['transaction_date'] = mem_target.registration_init_time
+mem_target.msno[0]
+
+trans_mem_target = pd.merge(all_trans_target, mem_target[['msno', 'transaction_date']], \
+                    on=['msno', 'transaction_date'], how='outer')
+trans_mem_target[trans_mem_target.msno == mem_target.msno[0]]
+all_trans_target.transaction_date.min()
+
+trans_mem_target.transaction_date.min()
+
+
+trans_mem_target.to_csv(data_directory+'transactions_w_reg_init_date_after_2015.csv', index=False)
 #==================================================================================================================================
 # USER LOGS DATA
 # One observation = aggregated stats about songs played per user per date
@@ -129,9 +166,9 @@ pmt_ids_per_user
 # huge data files - logs has 392,106,543 (must use PySpark, too big for Pandas to handle)
 # can I just append logs2 to logs?
 
-logs = pd.read_csv(data_directory+'user_logs.csv')
+logs = pd.read_csv(data_directory+'user_logs.csv', nrows=100000)
 len(logs)
-logs.head()
+logs.head(10)
 
 logs.info()
 logs_churn = pd.merge(logs, total_target[['msno', 'is_churn_final']], on='msno', how='left')

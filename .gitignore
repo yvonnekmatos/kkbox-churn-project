@@ -6,3 +6,5 @@ __pycache__
 pairs.py
 spark-warehouse/
 data_to_postgresdb.py
+dask-worker-space/
+try_dask.py

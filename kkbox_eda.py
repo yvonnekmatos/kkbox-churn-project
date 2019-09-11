@@ -140,23 +140,38 @@ pmt_ids_per_user
 all_trans_target = pd.read_csv(data_directory+'all_transactions_in_w_target.csv')
 all_trans_target['transaction_date'] = pd.to_datetime(all_trans_target.transaction_date.astype(str), format='%Y%m%d')
 all_trans_target['membership_expire_date'] = pd.to_datetime(all_trans_target.membership_expire_date.astype(str), format='%Y%m%d')
+
+all_trans_target.groupby('msno').first().is_churn_final.mean()
+
 all_trans_target.transaction_date[0]
 all_trans_target.head()
+all_trans_target.shape
+
 mem_target = pd.read_csv(data_directory+'clean_members_w_target.csv', parse_dates=['registration_init_time'])
+mem_target.is_churn_final.mean()
 mem_target = mem_target[mem_target.reg_year >= 2015]
+mem_target.is_churn_final.mean()
 mem_target.info()
 
 all_trans_target.info()
 mem_target['transaction_date'] = mem_target.registration_init_time
 mem_target.msno[0]
 
+all_trans_target = all_trans_target[all_trans_target.msno.isin(list(mem_target.msno))]
+all_trans_target.groupby('msno').first().is_churn_final.mean()
+
+all_trans_target.shape
+
 trans_mem_target = pd.merge(all_trans_target, mem_target[['msno', 'transaction_date']], \
                     on=['msno', 'transaction_date'], how='outer')
-trans_mem_target[trans_mem_target.msno == mem_target.msno[0]]
+
+trans_mem_target.sort_values(by=['msno', 'transaction_date']).groupby(['msno',]).last().is_churn_final.mean()
+
+# trans_mem_target[trans_mem_target.msno == mem_target.msno[0]]
 all_trans_target.transaction_date.min()
 
 trans_mem_target.transaction_date.min()
-
+trans_mem_target.shape
 
 trans_mem_target.to_csv(data_directory+'transactions_w_reg_init_date_after_2015.csv', index=False)
 #==================================================================================================================================

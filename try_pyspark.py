@@ -1,11 +1,12 @@
 import pyspark
 from wd import *
-from pyspark.sql.functions import datediff, to_date, lit
+from pyspark.sql.functions import datediff, to_date, lit, udf
 from pyspark.sql import functions as F
+from pyspark.sql.types import FloatType
 # from pyspark import SparkContext
 # from pyspark import SQLContext
 from pyspark.sql.window import Window
-
+import pandas as pd
 
 
 spark = pyspark.sql.SparkSession.builder.getOrCreate()
@@ -14,8 +15,8 @@ spark = pyspark.sql.SparkSession.builder.getOrCreate()
 # transactions = spark.read.csv(data_directory+'all_transactions_in_w_target.csv', header=True, inferSchema=True)
 
 # All transactions in churn dataset, including registration init date, with registration init date 2015 or later
-transactions = spark.read.csv(data_directory+'transactions_w_reg_init_date_after_2015.csv', header=True, inferSchema=True)
-
+transactions = spark.read.csv(data_directory+'transactions_w_reg_init_date_after_2015.csv', header=True, inferSchema=True).limit(100000)
+transactions.count()
 # All transactions in churn dataset, including registration init date
 # transactions = spark.read.csv(data_directory+'all_transactions_w_reg_init_date.csv', header=True, inferSchema=True)
 transactions.show(5)
@@ -38,18 +39,79 @@ transactions.show(50)
 # transactions = transactions.withColumn('prev_transaction_date', transactions.prev_transaction_date.cast('string'))
 # transactions = transactions.withColumn('prev_transaction_date', F.to_date(F.unix_timestamp('prev_transaction_date', 'yyyyMMdd').cast('timestamp')))
 
-transactions = transactions.withColumn('days_since_prev_transaction',\
-    F.datediff(transactions.transaction_date, transactions.prev_transaction_date))
+# transactions = transactions.withColumn('days_since_prev_transaction',\
+#     F.datediff(transactions.transaction_date, transactions.prev_transaction_date))
 
 transactions = transactions.withColumn('months_since_prev_transaction',\
     F.months_between(transactions.transaction_date, transactions.prev_transaction_date))
 transactions.printSchema()
-transactions.select(['msno', 'is_churn_final', 'payment_plan_days', 'transaction_date', 'prev_transaction_date', 'months_since_prev_transaction'])\
-.filter(transactions.months_since_prev_transaction >= 2).groupby('msno').count().count()
+exclude = transactions.select(['msno', 'is_churn_final', 'payment_plan_days', 'transaction_date', 'prev_transaction_date', 'months_since_prev_transaction'])\
+    .filter(transactions.months_since_prev_transaction >= 1.5).groupby('msno').count()
+
+
+exclude_array = [row.msno for row in exclude.select('msno').collect()]
+exclude_array
+
+transactions = transactions.filter(~transactions.msno.isin(exclude_array))
+transactions.\
+select(['msno', 'is_churn_final', 'payment_plan_days', 'transaction_date', 'prev_transaction_date', 'months_since_prev_transaction']).show(50)
+
+# Do ceiling or floor function on months_since_prev_transaction to get to 0 or 1 month increments
+# Filter and select only months_since_prev_transaction == 1
+# Partition by row number as in SQL query
+
+def ceil_or_floor(x):
+    if x < 0.5:
+        return float(0)
+    elif 0.5 <= x < 1:
+        return float(1)
+    elif x > 1:
+        return float(1)
+    else:
+        return float(x)
+
+udf_round = udf(lambda x: ceil_or_floor(x))
+
+transactions = transactions.where(F.col('months_since_prev_transaction').isNotNull())
+
+transactions = transactions.withColumn('round_months_since_prev_transaction', udf_round(transactions.months_since_prev_transaction))
+transactions.show(50)
+
+transactions = transactions.select(['msno', 'is_churn_final', 'transaction_date', \
+            'prev_transaction_date', 'months_since_prev_transaction', 'round_months_since_prev_transaction'])\
+            .where(F.col('round_months_since_prev_transaction') == 1)
+
+
+transactions.count()
+
+my_window_desc = Window.partitionBy('msno').orderBy(F.desc('transaction_date'))
+
+transactions = transactions.withColumn('month_desc', F.row_number().over(my_window_desc))
+transactions = transactions.withColumn('month', F.row_number().over(my_window))
+
+transactions = transactions.where(F.col('month_desc') == 1)
+
+transactions.show(50)
+transactions.count()
+
+pd_transactions = transactions.toPandas()
+pd_transactions.head()
+pd_transactions.to_csv(data_directory+'survival_data/survival_subset.csv', index=False)
+
+
+
+
+transactions.select(['msno'])\
+.filter((transactions.months_since_prev_transaction < 2) & (transactions.months_since_prev_transaction > 0))\
+.groupby('msno').count().show()
+
+120278+421867
 # Insert extra rows where months_since_prev_transaction > 1
 # Label row numbers (month) through partition query
 
 # MVP filter out all users that have months_since_prev_transaction < 2
+# Go back to eda file and get only users that have reg_day >= 2015
+
 transactions.groupby('msno').count().count()
 
 transactions.show(50)

@@ -131,7 +131,6 @@ pmt_ids_per_user = pd.DataFrame(all_transactions.groupby(['msno', 'payment_metho
 # merge this back in to all_transactions
 pmt_ids_per_user
 
-# Try these pandas functions with dask??
 
 # More complex features
 # Number of times (transactions per date > 1) - group by plan_list_price

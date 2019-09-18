@@ -94,11 +94,14 @@ mem_target.head()
 
 mem_target.reg_day_of_week.value_counts()
 mem_target.info()
+mem_target.msno.nunique()
 mem_target.to_csv(data_directory+'clean_members_w_target.csv', index=False)
 #==================================================================================================================================
 # CLEANED DATASET READY FOR SIMPLE MODEL
 
 mem_target = pd.read_csv(data_directory+'clean_members_w_target.csv')
+mem_target.msno.nunique()
+
 mem_target['city'] = mem_target.city.astype(str).fillna('999')
 mem_target['registered_via'] = mem_target.registered_via.astype(str).fillna('999')
 mem_target = mem_target.drop('registration_init_time', axis=1)
@@ -110,16 +113,33 @@ X_train, X_test, y_train, y_test = train_test_split(for_woe, for_woe.is_churn_fi
 X_train.is_churn_final.mean()
 X_test.is_churn_final.mean()
 
+X_train.shape
+X_train.msno.nunique()
+X_test.shape
+X_test.msno.nunique()
+
+len(X_train)+len(X_test)
 
 features_id = list(X_train)
 features = features_id[2:]
 features
 
 iv_dict, woe_df, X_train_cat_feat_woe_transformed = calc_woe_and_transform_many_features(X_train, features, features_id, 'is_churn_final')
+X_train_cat_feat_woe_transformed.shape[0] == X_train.shape[0]
+X_train_cat_feat_woe_transformed.msno.nunique()
 
-X_test_cat_feat_woe_transformed = woe_transform_many_features(X_train, woe_df, features, features_id, 'is_churn_final')
+# Need to debug here
+X_test_cat_feat_woe_transformed = woe_transform_many_features(X_test, woe_df, features, features_id, 'is_churn_final')
+X_test_cat_feat_woe_transformed.shape[0] == X_test.shape[0]
+X_test_cat_feat_woe_transformed.shape[0]
+X_test.shape[0]
+
+X_test_cat_feat_woe_transformed
+
 
 total_cat_feat_woe_transformed = X_train_cat_feat_woe_transformed.append(X_test_cat_feat_woe_transformed)
+total_cat_feat_woe_transformed.shape
+total_cat_feat_woe_transformed.msno.nunique()
 
 total_cat_feat_woe_transformed = total_cat_feat_woe_transformed.drop(features, axis=1)
 
@@ -131,47 +151,7 @@ for_modeling = pd.merge(total_cat_feat_woe_transformed, mem_target[['msno', 'bd'
 
 for_modeling.info()
 
-
-X = for_modeling.drop(['msno', 'is_churn_final'], axis=1)
-y = for_modeling.is_churn_final
-
-for_modeling.to_csv(data_directory+'clean_transformed_data_for_simple_model.csv', index=False)
+for_modeling.msno.nunique()
 
 
-mem_target.columns
-mem_target.groupby(['reg_year']).is_churn_final.mean()
-mem_target.groupby(['reg_year']).agg({'is_churn_final': ['size', 'mean']}).reset_index()
-
-
-# Over weekend, get another minimum feature of latest month's listening behavior, and latest month's transactions per account to try in baseline model
-# Try this using dask.
-# side note for evening: XGB parameter tuning using gridsearchCV
-
-# PUT OFF Try featuretools with a subset of data using Python to get familiar with it.
-# Next week: Survival analysis to find when customers will typically leave
-
-# MAYBE: Next week: work on scaling up feature engineering using featuretools and pyspark in the cloud
-
-# Business questions:
-# Which customers will leave? (churn model)
-# When do customers typically leave us? (survival analysis with hazard function)
-# Which customers will make us the most money? (clustering)
-
-# Survival analysis: summarize how many customers leave at each time point (and what they look like in profile)
-# Clustering: help get customer profiles to identify high money makers and what they look like, least money and what they look like
-
-# Questions:
-# 1. Plan going forward sound good?
-# 2. What else can I do with this dataset?
-# 3. XGB did not outperform RF - normal?
-
-# Time allotment
-# 1 d to set up cluster for PySpark, EMR, 1d for pyspark code, try to request larger computer for EMR, EC2 - get that approval now, it can take a few days
-
-
-# TRY VERY SIMPLE MODEL WITH MEMBERS DATA just out of curiousity
-# I expect behavioral data will be very important for predicting churn
-# City to str for categorical - run WOE
-# Clean up bd (age) to make sense
-# Gender to categorical and nulls to 'unknown' - run WOE
-#
+for_modeling.to_csv(data_directory+'clean_transformed_data_for_simple_model2.csv', index=False)

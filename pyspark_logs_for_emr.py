@@ -1,6 +1,8 @@
 import pyspark
 from pyspark.sql import functions as F
 
+# SCRIPT TO RUN ON AWS EMR CLUSTER TO ENGINEER FEATURES FROM USER LISTENING LOGS TO USE IN CHURN MODEL
+
 spark = pyspark.sql.SparkSession.builder.getOrCreate()
 
 # USER LOGS DATA
@@ -11,7 +13,6 @@ logs2 = spark.read.csv('s3n://kkbox-data-ykm/user_logs_v2.csv', header=True, inf
 all_logs = logs.union(logs2)
 
 all_logs.createOrReplaceTempView('all_logs')
-# logs2.createOrReplaceTempView('all_logs')
 
 # GETTING ROWS PER USER
 last_row_per_user_query = 'WITH row_per_user as ( \

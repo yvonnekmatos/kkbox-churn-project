@@ -5,6 +5,8 @@ import lifelines as ll
 import seaborn as sns
 import matplotlib.pyplot as plt
 
+# DO KAPLAN-MEIER SURVIVAL ANALYSIS ON CUSTOMERS WHO JOINED 2015 OR LATER 
+
 churn_months = pd.read_csv(data_directory+'survival_data/survival_2015_after.csv')
 
 churn_months.month.max()

@@ -154,3 +154,41 @@ def calc_iv(df, feature, target, pr=False):
     # print(iv)
 
     return iv, data
+
+def calc_woe_and_transform_one_feature(main, feature, target):
+    iv, woe = calc_iv(main, feature, target)
+    woe_val = clean_columns(woe)
+    woe_val = woe_val.rename(columns={'value': feature, 'woe': feature+'_woe'})
+    woe_val = woe_val.iloc[:,[1,-2]]
+    return iv, woe, woe_val
+
+def calc_woe_and_transform_many_features(main, features, features_id, target):
+    main_categoricals_woe_transformed = main.copy()
+    main_categoricals_woe_transformed = main_categoricals_woe_transformed[features_id]
+    main_categoricals_woe_transformed = main_categoricals_woe_transformed.fillna('NULL')
+
+    woe_df = pd.DataFrame()
+    iv_dict = {}
+    for feature in features:
+        iv, woe, woe_val = calc_woe_and_transform_one_feature(main, feature, target)
+        iv_dict[feature] = iv
+        woe_df = woe_df.append(woe)
+        main_categoricals_woe_transformed = pd.merge(main_categoricals_woe_transformed, woe_val, on=feature, how='left')
+    return iv_dict, woe_df, main_categoricals_woe_transformed
+
+def woe_transform_one_feature(main, woe_df, feature, target):
+    woe_val = clean_columns(woe_df)
+    woe_val = woe_df[woe_df.variable==feature]
+    woe_val = woe_val.rename(columns={'value': feature, 'woe': feature+'_woe'})
+    woe_val = woe_val.iloc[:,[1,-2]]
+    return woe_val
+
+def woe_transform_many_features(main, woe_df, features, features_id, target):
+    main_categoricals_woe_transformed = main.copy()
+    main_categoricals_woe_transformed = main_categoricals_woe_transformed[features_id]
+    main_categoricals_woe_transformed = main_categoricals_woe_transformed.fillna('NULL')
+
+    for feature in features:
+        woe_val = woe_transform_one_feature(main, woe_df, feature, target)
+        main_categoricals_woe_transformed = pd.merge(main_categoricals_woe_transformed, woe_val, on=feature, how='left')
+    return main_categoricals_woe_transformed

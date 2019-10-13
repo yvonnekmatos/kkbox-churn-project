@@ -6,6 +6,8 @@ from pyspark.sql.types import FloatType
 from pyspark.sql.window import Window
 import pandas as pd
 
+# GET MEMBERSHIP LENGTH FOR CUSTOMERS WHO JOINED IN 2015 OR LATER 
+
 spark = pyspark.sql.SparkSession.builder.getOrCreate()
 
 transactions = spark.read.csv(data_directory+'transactions_w_reg_init_date_after_2015.csv', header=True, inferSchema=True)

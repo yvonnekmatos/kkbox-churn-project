@@ -3,7 +3,7 @@ import numpy as np
 from wd import *
 
 # We can predict if customers will cancel a subscription (normal classification problem)
-# For customers that do cancel, can we predict when they will cancel? (May not be enough data)
+# For customers that do cancel, can we predict when they will cancel?
 
 def get_final_target(churn, update):
     if np.isnan(update):
@@ -39,7 +39,7 @@ total_target.info()
 # 134,480 customers canceled
 total_target.is_churn_final.value_counts()
 
-# total_target.to_csv(data_directory+'final_churn_target.csv', index=False)
+total_target.to_csv(data_directory+'final_churn_target.csv', index=False)
 #==================================================================================================================================
 # MEMBERS DATA
 
@@ -61,12 +61,9 @@ mem_target.groupby('registered_via').is_churn_final.mean()
 # Clean up bd (age) to make sense
 # Gender to categorical and nulls to 'unknown' - run WOE
 
-# Membership length
-
-
 #==================================================================================================================================
 # TRANSACTIONS DATA
-# (This may be the trickiest part)
+
 # One observation = one transaction per customer per date (can be multiple transactions on a single date)
 
 transactions = pd.read_csv(data_directory+'transactions.csv')
@@ -122,20 +119,10 @@ all_transactions.head()
 all_transactions.msno.nunique()
 len(all_transactions.groupby(['msno', 'plan_list_price']).size())
 
-# FEATURES TO ENGINEER FROM THIS DF
-# Simple features on large df
-# DONE plan_list_price - actual_amount_paid
-# Number of payment_method_id's used per msno
-# number of payment plans per user?
-pmt_ids_per_user = pd.DataFrame(all_transactions.groupby(['msno', 'payment_method_id']).size()).reset_index()
-# merge this back in to all_transactions
-pmt_ids_per_user
 
-
-# More complex features
-# Number of times (transactions per date > 1) - group by plan_list_price
-# Number of plans at once?
 #==================================================================================================================================
+# GETTING CUSTOMER TRANSACTION DATA FOR CUSTOMERS WHO JOINED 2015 OR LATER
+
 all_trans_target = pd.read_csv(data_directory+'all_transactions_in_w_target.csv')
 all_trans_target['transaction_date'] = pd.to_datetime(all_trans_target.transaction_date.astype(str), format='%Y%m%d')
 all_trans_target['membership_expire_date'] = pd.to_datetime(all_trans_target.membership_expire_date.astype(str), format='%Y%m%d')
@@ -178,7 +165,6 @@ trans_mem_target.to_csv(data_directory+'transactions_w_reg_init_date_after_2015.
 # One observation = aggregated stats about songs played per user per date
 
 # huge data files - logs has 392,106,543 (must use PySpark, too big for Pandas to handle)
-# can I just append logs2 to logs?
 
 logs = pd.read_csv(data_directory+'user_logs.csv', nrows=100000)
 len(logs)

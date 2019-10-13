@@ -6,33 +6,34 @@ from pyspark.sql.types import FloatType
 from pyspark.sql.window import Window
 # import pandas as pd
 
+# INSPECT AND CLEAN USER LOGS DATA IN PREPARATION FOR CREATING SCRIPT TO RUN ON EMR
+
 spark = pyspark.sql.SparkSession.builder.getOrCreate()
 
 # USER LOGS DATA
 logs = spark.read.csv(data_directory+'user_logs.csv', header=True, inferSchema=True)
 
-# logs.count()
+logs.count()
 # No duplicate date entries per user
-# logs.groupby(['msno', 'date']).count().count()
+logs.groupby(['msno', 'date']).count().count()
 # Negative values where there shouldn't be? Total secs has values < 0
-# logs.describe().show()
+logs.describe().show()
 
 
 logs2 = spark.read.csv(data_directory+'user_logs_v2.csv', header=True, inferSchema=True)
 
 
-# logs2.show(5)
+logs2.show(5)
 logs2.count()
 # No duplicate date entries per user
-# logs2.groupby(['msno', 'date']).count().count()
+logs2.groupby(['msno', 'date']).count().count()
 # No negative values where there shouldn't be
-# logs2.describe().show()
+logs2.describe().show()
 
 all_logs = logs.union(logs2)
-# all_logs.show(5)
-# all_logs.count()
-# logs.count() + logs2.count()
-# 392106543+18396362
+all_logs.show(5)
+all_logs.count()
+logs.count() + logs2.count()
 # Everything appended correctly
 
 # No overlap when grouping by msno and date
@@ -64,7 +65,7 @@ last_row_per_user_query = 'WITH row_per_user as ( \
                 WHERE row_number = 1'
 last_row_per_user = spark.sql(last_row_per_user_query)
 last_row_per_user.write.save(data_directory+'TEST_logs_last_row_per_user.csv', format='csv', header=True)
-# row_per_user.count()
+row_per_user.count()
 row_per_user.show()
 row_per_user_pd = row_per_user.toPandas()
 row_per_user_pd.to_csv(data_directory+'logs_last_row_per_user.csv', index=False)
@@ -83,7 +84,6 @@ second_last_row_per_user_query = 'WITH row_per_user as ( \
                     , num_75 as num_75_2ndlast \
                     , num_985 as num_985_2ndlast \
                     , num_100 as num_100_2ndlast \
-                    , num_25 as num_25_2ndlast \
                     , num_unq as num_unq_2ndlast \
                     , CASE WHEN total_secs < 0 THEN 0 ELSE total_secs END as total_secs_clean_2ndlast  \
                     , ABS(total_secs) as abs_total_secs_2ndlast  \
@@ -104,7 +104,6 @@ third_last_row_per_user_query = 'WITH row_per_user as ( \
                     , num_75 as num_75_3rdlast \
                     , num_985 as num_985_3rdlast \
                     , num_100 as num_100_3rdlast \
-                    , num_25 as num_25_3rdlast \
                     , num_unq as num_unq_3rdlast \
                     , CASE WHEN total_secs < 0 THEN 0 ELSE total_secs END as total_secs_clean_3rdlast  \
                     , ABS(total_secs) as abs_total_secs_3rdlast  \
@@ -153,66 +152,3 @@ sum_of_3_last_rows_query = 'WITH row_per_user as ( \
          HAVING row_count_3last = 3'
 sum_of_3_last_rows = spark.sql(sum_of_3_last_rows_query)
 sum_of_3_last_rows.show()
-
-# Getting total listeing behavior from the last two weeks - still needs work
-sum_of_3_last_rows_query = 'SELECT msno  \
-            , COUNT(msno) as row_count_last2w \
-            , SUM(num_25) as sum_num_25_last2w  \
-            , SUM(num_50) as sum_num_50_last2w  \
-            , SUM(num_75) as sum_num_75_last2w  \
-            , SUM(num_985) as sum_num_985_last2w  \
-            , SUM(num_100) as sum_num_100_last2w  \
-            , SUM(num_unq) as sum_num_unq_last2w  \
-            , SUM(CASE WHEN total_secs < 0 THEN 0 ELSE total_secs END) as sum_total_secs_clean_last2w \
-            , SUM(ABS(total_secs)) as sum_abs_total_secs_last2w  \
-         FROM all_logs  \
-         WHERE to_date(cast(date as string), "yyyyMMdd") > (MAX(to_date(cast(date as string), "yyyyMMdd")) - INTERVAL "14" DAY) OVER (PARTITION BY msno) \
-         GROUP BY msno'
-sum_of_3_last_rows = spark.sql(sum_of_3_last_rows_query)
-sum_of_3_last_rows.show()
-
-sum_of_3_last_rows.printSchema()
-# sum_of_3_last_rows_query = 'WITH row_per_user as ( \
-#                     SELECT *  \
-#                     , row_number() OVER (PARTITION BY msno ORDER BY date DESC) as row_number  \
-#                     FROM all_logs) \
-#                 SELECT * \
-#                 FROM row_per_user \
-#                 WHERE row_number in (1,2,3)'
-# sum_of_3_last_rows = spark.sql(sum_of_3_last_rows_query)
-# sum_of_3_last_rows.show()
-# ===========================================================================================================================
-
-# FEATURES TO CREATE FROM LOGS TABLE
-# Min date col
-# max date col
-# num days between max and min dates (will do this again when merging with members/transactions on registration_init_time)
-# last 2-3 entries (as two sets of cols)
-# DONE sum of each col (except date) for each msno
-
-# ===========================================================================================================================
-# OLD
-
-# part_query = 'SELECT row_number() over (partition by msno ORDER BY date) as row_number ' \
-#                 'from all_logs'
-# spark.sql(part_query).show(10)
-
-
-# logs = spark.read.csv(data_directory+'user_logs.csv', header=True, inferSchema=True)
-
-# GETTING LAST ROW PER USER WITHOUT WINDOW FUNCTION
-last_row_per_user_query = 'SELECT al.msno ' \
-                    ', al.date ' \
-                    ', num_25 as num_25_last ' \
-                    ', num_50 as num_50_last ' \
-                    ', num_75 as num_75_last ' \
-                    ', num_985 as num_985_last ' \
-                    ', num_100 as num_100_last ' \
-                    ', num_unq as num_unq_last ' \
-                    ', total_secs as total_secs_last ' \
-              'from ' \
-                    '(SELECT msno, max(date) as date FROM all_logs GROUP BY msno) md ' \
-              'left join all_logs al ' \
-              'on al.msno = md.msno AND al.date = md.date'
-q2 = spark.sql(last_row_per_user_query)
-q2.show()

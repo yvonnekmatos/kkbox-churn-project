@@ -6,9 +6,9 @@ from pyspark.sql import functions as F
 spark = pyspark.sql.SparkSession.builder.getOrCreate()
 
 # USER LOGS DATA
-logs = spark.read.csv('s3n://kkbox-data-ykm/user_logs.csv', header=True, inferSchema=True)
+logs = spark.read.csv('s3n://my-s3-bucket-name/user_logs.csv', header=True, inferSchema=True)
 
-logs2 = spark.read.csv('s3n://kkbox-data-ykm/user_logs_v2.csv', header=True, inferSchema=True)
+logs2 = spark.read.csv('s3n://my-s3-bucket-name/user_logs_v2.csv', header=True, inferSchema=True)
 
 all_logs = logs.union(logs2)
 
@@ -32,7 +32,7 @@ last_row_per_user_query = 'WITH row_per_user as ( \
                 FROM row_per_user  \
                 WHERE row_number = 1'
 last_row_per_user = spark.sql(last_row_per_user_query)
-last_row_per_user.write.save("s3://kkbox-data-ykm/logs_last_row_per_user.csv", format='csv', header=True)
+last_row_per_user.write.save("s3://my-s3-bucket-name/logs_last_row_per_user.csv", format='csv', header=True)
 
 # 2nd to last row per user
 second_last_row_per_user_query = 'WITH row_per_user as ( \
@@ -52,7 +52,7 @@ second_last_row_per_user_query = 'WITH row_per_user as ( \
                 FROM row_per_user  \
                 WHERE row_number = 2'
 second_last_row_per_user = spark.sql(second_last_row_per_user_query)
-second_last_row_per_user.write.save("s3://kkbox-data-ykm/logs_2ndlast_row_per_user.csv", format='csv', header=True)
+second_last_row_per_user.write.save("s3://my-s3-bucket-name/logs_2ndlast_row_per_user.csv", format='csv', header=True)
 
 # 3rd to last row per user
 third_last_row_per_user_query = 'WITH row_per_user as ( \
@@ -72,7 +72,7 @@ third_last_row_per_user_query = 'WITH row_per_user as ( \
                 FROM row_per_user  \
                 WHERE row_number = 3'
 third_last_row_per_user = spark.sql(third_last_row_per_user_query)
-third_last_row_per_user.write.save("s3://kkbox-data-ykm/logs_3rdlast_row_per_user.csv", format='csv', header=True)
+third_last_row_per_user.write.save("s3://my-s3-bucket-name/logs_3rdlast_row_per_user.csv", format='csv', header=True)
 
 # ===========================================================================================================================
 # GETTING THE SUM OF ALL ROWS PER USER
@@ -89,7 +89,7 @@ sum_of_rows_query = 'SELECT msno  \
          FROM all_logs  \
          GROUP BY msno'
 sum_of_rows = spark.sql(sum_of_rows_query)
-sum_of_rows.write.save("s3://kkbox-data-ykm/logs_sum_of_rows_per_user.csv", format='csv', header=True)
+sum_of_rows.write.save("s3://my-s3-bucket-name/logs_sum_of_rows_per_user.csv", format='csv', header=True)
 
 # Sum of last 3 rows per customer for customers with 3 or more rows
 sum_of_3_last_rows_query = 'WITH row_per_user as ( \
@@ -111,4 +111,4 @@ sum_of_3_last_rows_query = 'WITH row_per_user as ( \
          GROUP BY msno \
          HAVING row_count_3last = 3'
 sum_of_3_last_rows = spark.sql(sum_of_3_last_rows_query)
-sum_of_3_last_rows.write.save("s3://kkbox-data-ykm/logs_sum_last_3_rows_per_user.csv", format='csv', header=True)
+sum_of_3_last_rows.write.save("s3://my-s3-bucket-name/logs_sum_last_3_rows_per_user.csv", format='csv', header=True)
